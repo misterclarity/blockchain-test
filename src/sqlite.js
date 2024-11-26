@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 
 // Initialize the database
-const dbDir = "./.data";
+const dbDir = process.env.PROJECT_PATH ? path.join(process.env.PROJECT_PATH, '.data') : './.data';
 const dbFile = path.join(dbDir, "blockchain.db");
 
 // Ensure the database directory exists
