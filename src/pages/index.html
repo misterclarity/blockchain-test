@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Mental Health Blockchain</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --bg-light: #f3f4f6;
+            --text-dark: #1f2937;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .blockchain-interface {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-dark);
+        }
+
+        .block-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .block {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .resource-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resource-item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            border-left: 4px solid var(--primary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Community Mental Health Blockchain</h1>
+            <p>A decentralized platform for mental health resource sharing and support</p>
+        </div>
+
+        <div class="blockchain-interface">
+            <div class="card">
+                <h2>Add Resource</h2>
+                <form id="resourceForm">
+                    <div class="form-group">
+                        <label for="resourceType">Resource Type:</label>
+                        <select id="resourceType" required>
+                            <option value="therapy">Therapy</option>
+                            <option value="support_group">Support Group</option>
+                            <option value="crisis">Crisis Support</option>
+                            <option value="education">Educational Resource</option>
+                            <option value="wellness">Wellness Program</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="resourceName">Resource Name:</label>
+                        <input type="text" id="resourceName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="resourceDescription">Description:</label>
+                        <textarea id="resourceDescription" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="contactInfo">Contact Information:</label>
+                        <input type="text" id="contactInfo" required>
+                    </div>
+                    <button type="submit">Add to Blockchain</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>Blockchain Explorer</h2>
+                <div id="blockList" class="block-list"></div>
+            </div>
+
+            <div class="card">
+                <h2>Resource Directory</h2>
+                <div class="form-group">
+                    <label for="filterType">Filter by Type:</label>
+                    <select id="filterType">
+                        <option value="all">All Resources</option>
+                        <option value="therapy">Therapy</option>
+                        <option value="support_group">Support Group</option>
+                        <option value="crisis">Crisis Support</option>
+                        <option value="education">Educational Resource</option>
+                        <option value="wellness">Wellness Program</option>
+                    </select>
+                </div>
+                <div id="resourceList" class="resource-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class Block {
+            constructor(timestamp, data, previousHash = '') {
+                this.timestamp = timestamp;
+                this.data = data;
+                this.previousHash = previousHash;
+                this.hash = this.calculateHash();
+                this.nonce = 0;
+            }
+
+            calculateHash() {
+                return CryptoJS.SHA256(
+                    this.previousHash + 
+                    this.timestamp + 
+                    JSON.stringify(this.data) + 
+                    this.nonce
+                ).toString();
+            }
+
+            mineBlock(difficulty) {
+                while (this.hash.substring(0, difficulty) !== Array(difficulty + 1).join("0")) {
+                    this.nonce++;
+                    this.hash = this.calculateHash();
+                }
+            }
+        }
+
+        // Fetch blocks from server
+        async function fetchBlocks() {
+            try {
+                const response = await fetch('/api/blocks');
+                if (!response.ok) throw new Error('Failed to fetch blocks');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching blocks:', error);
+                return [];
+            }
+        }
+
+        // Fetch resources from server
+        async function fetchResources(type = 'all') {
+            try {
+                const response = await fetch(`/api/resources?type=${type}`);
+                if (!response.ok) throw new Error('Failed to fetch resources');
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching resources:', error);
+                return [];
+            }
+        }
+
+        // Update blockchain display
+        async function updateBlockchainDisplay() {
+            const blockList = document.getElementById('blockList');
+            blockList.innerHTML = '';
+
+            const blocks = await fetchBlocks();
+            blocks.forEach(block => {
+                const blockElement = document.createElement('div');
+                blockElement.className = 'block';
+                blockElement.innerHTML = `
+                    <strong>Hash:</strong> ${block.hash}<br>
+                    <strong>Previous Hash:</strong> ${block.previousHash}<br>
+                    <strong>Timestamp:</strong> ${new Date(parseInt(block.timestamp)).toLocaleString()}<br>
+                    <strong>Data:</strong> ${JSON.stringify(block.data, null, 2)}
+                `;
+                blockList.appendChild(blockElement);
+            });
+        }
+
+        // Update resource list
+        async function updateResourceList() {
+            const resourceList = document.getElementById('resourceList');
+            const type = document.getElementById('filterType').value;
+            resourceList.innerHTML = '';
+
+            const resources = await fetchResources(type);
+            resources.forEach(resource => {
+                const resourceElement = document.createElement('div');
+                resourceElement.className = 'resource-item';
+                resourceElement.innerHTML = `
+                    <strong>${resource.name}</strong><br>
+                    <em>Type: ${resource.type}</em><br>
+                    ${resource.description}<br>
+                    Contact: ${resource.contact}
+                `;
+                resourceList.appendChild(resourceElement);
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('resourceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const newResource = {
+                type: document.getElementById('resourceType').value,
+                name: document.getElementById('resourceName').value,
+                description: document.getElementById('resourceDescription').value,
+                contact: document.getElementById('contactInfo').value,
+                timestamp: Date.now()
+            };
+
+            try {
+                // Create and mine the block
+                const block = new Block(Date.now(), newResource);
+                block.mineBlock(2); // Mine with difficulty 2
+
+                // Send block to server
+                const response = await fetch('/api/blocks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(block)
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to add block');
+                }
+
+                // Update displays
+                await updateBlockchainDisplay();
+                await updateResourceList();
+
+                // Reset form
+                e.target.reset();
+            } catch (error) {
+                console.error('Error adding resource:', error);
+                alert('Failed to add resource to blockchain');
+            }
+        });
+
+        document.getElementById('filterType').addEventListener('change', updateResourceList);
+
+        // Initial display update
+        updateBlockchainDisplay();
+        updateResourceList();
+    </script>
+</body>
+</html>
